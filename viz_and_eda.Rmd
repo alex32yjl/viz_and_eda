@@ -1,0 +1,99 @@
+---
+title: "ggplot1"
+author: "Yujia Li"
+date: "10/5/2021"
+output: github_document
+---
+
+```{r setup}
+library(tidyverse)
+library(ggridges)
+```
+
+## data import
+1. *pull* _id_, _prcp_, _tmin_ and _tmax_ out of orginal data set; use _date_ to select certain ranges of observations.
+2. *mutate* new variable _name_ from *recode*  _id_; and also redefine _tmin_ and _tmax_.  
+```{r weather NYC}
+weather_df = rnoaa::meteo_pull_monitors(c("USW00094728", "USC00519397", "USS0023B17S"), var = c("PRCP", "TMIN", "TMAX"), date_min = "2017-01-01", date_max = "2017-12-31") %>%
+  mutate(name = recode(id, USW00094728 = "CentralPark_NY", USC00519397 = "Waikiki_HA",USS0023B17S = "Waterhole_WA"),tmin = tmin / 10,tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+## Plots
+How to *color*, add *smooth curve* and change the *transparency* in ggplot
+```{r}
+plot_weather = 
+  weather_df %>%
+  ggplot(aes(x = tmin, y = tmax)) 
+
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name))
+
+ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) +
+  geom_smooth(se = FALSE)
+```
+
+## The difference in adding **color** to ggplot and geom 
+## facet_grid argument with *.~variable* 
+```{r}
+ggplot(weather_df, aes(x = tmin, y = tmax, color = name)) + 
+  geom_point(alpha = .5) +
+  geom_smooth(se = FALSE) + 
+  facet_grid(. ~ name)
+```
+
+## The precipitation in NYC
+```{r}
+ggplot(weather_df, aes(x = date, y = tmax, color = name)) + 
+  geom_point(aes(size = prcp), alpha = .5) +
+  geom_smooth(se = FALSE) + 
+  facet_grid(. ~ name)
+```
+
+## Compare histogram and density 
+```{r}
+ggplot(weather_df, aes(x = tmax)) + 
+  geom_histogram()
+ggplot(weather_df, aes(x = tmax, fill = name)) + 
+  geom_histogram(position = "dodge", binwidth = 2)
+
+ggplot(weather_df, aes(x = tmax, fill = name)) + 
+  geom_density(alpha = .4, adjust = .5, color = "blue")
+```
+
+## box plot
+```{r}
+ggplot(weather_df, aes(x = name, y = tmax)) + 
+  geom_violin(aes(fill = name), alpha = .5) + 
+  stat_summary(fun = "median", color = "blue")
+```
+
+## ridge plot
+```{r}
+ggplot(weather_df, aes(x = tmax, y = name)) + 
+  geom_density_ridges(scale = .85)
+```
+
+## Learning assessment
+use _weather_df_, only with Central Park data;
+converts temp to Fahrenheit;
+makes a scatter plot of min vs. max temp
+overlays a linear regression 
+```{r}
+weather_df_LA = filter(weather_df, name == "CentralPark_NY") %>%
+  mutate(tmax = 9/5*tmax + 32, tmin = 9/5*tmin + 32) %>%
+  ggplot(aes(x = tmin, y = tmax)) + geom_point(alpha = .3) + geom_smooth(se = FALSE, method = "lm")
+
+plot(weather_df_LA)
+```
+
+## Saving the plot 
+```{r}
+weather_plot = ggplot(weather_df, aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) 
+
+ggsave("weather_plot.pdf", weather_plot, width = 8, height = 5)
+
+knitr::opts_chunk$set(fig.width = 6, fig.asp = .6,out.width = "90%")
+```
