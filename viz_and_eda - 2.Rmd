@@ -1,0 +1,147 @@
+---
+title: "ggplot2"
+author: "Yujia Li"
+date: "10/7/2021"
+output: github_document
+---
+
+```{r setup}
+library(tidyverse)
+library(patchwork)
+```
+
+## data import same as Viz-1
+1. *pull* _id_, _prcp_, _tmin_ and _tmax_ out of orginal data set; use _date_ to select certain ranges of observations.
+2. *mutate* new variable _name_ from *recode*  _id_; and also redefine _tmin_ and _tmax_.  
+```{r weather NYC}
+weather_df = rnoaa::meteo_pull_monitors(c("USW00094728", "USC00519397", "USS0023B17S"), var = c("PRCP", "TMIN", "TMAX"), date_min = "2017-01-01", date_max = "2017-12-31") %>%
+  mutate(name = recode(id, USW00094728 = "CentralPark_NY", USC00519397 = "Waikiki_HA",USS0023B17S = "Waterhole_WA"),tmin = tmin / 10,tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+## Labels
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .3) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  )
+```
+
+## Scales for continuous and discrete
+```{r}
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package") + 
+  scale_x_continuous(
+    breaks = c(-15, 0, 15), 
+    labels = c("-15º C", "0", "15")) +
+  scale_y_continuous(
+    trans = "sqrt", 
+    position = "right")
+
+weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package") + 
+  scale_color_hue(name = "Location", h = c(100, 300))
+```
+
+## Creating own colors 
+## Themes for non-data modification
+```{r}
+ggp_temp_plot = 
+  weather_df %>% 
+  ggplot(aes(x = tmin, y = tmax)) + 
+  geom_point(aes(color = name), alpha = .5) + 
+  labs(
+    title = "Temperature plot",
+    x = "Minimum daily temperature (C)",
+    y = "Maxiumum daily temperature (C)",
+    caption = "Data from the rnoaa package"
+  ) + 
+  viridis::scale_color_viridis(
+    name = "Location", 
+    discrete = TRUE)
+
+ggp_temp_plot + 
+  theme_grey() + 
+  theme(legend.position = "bottom")
+```
+
+## Merge different plots in ggplot
+```{r}
+central_park = 
+  weather_df %>% 
+  filter(name == "CentralPark_NY")
+
+waikiki = 
+  weather_df %>% 
+  filter(name == "Waikiki_HA")
+
+ggplot(data = waikiki, aes(x = date, y = tmax, color = name)) + 
+  geom_point() + 
+  geom_line(data = central_park)
+```
+
+## Patchwork
+```{r}
+tmax_tmin_p = 
+  weather_df %>% 
+  ggplot(aes(x = tmax, y = tmin, color = name)) + 
+  geom_point(alpha = .5) +
+  theme(legend.position = "none")
+
+prcp_dens_p = 
+  weather_df %>% 
+  filter(prcp > 0) %>% 
+  ggplot(aes(x = prcp, fill = name)) + 
+  geom_density(alpha = .5) + 
+  theme(legend.position = "none")
+
+tmax_date_p = 
+  weather_df %>% 
+  ggplot(aes(x = date, y = tmax, color = name)) + 
+  geom_point(alpha = .5) +
+  geom_smooth(se = FALSE) + 
+  theme(legend.position = "bottom")
+
+(tmax_tmin_p + prcp_dens_p) / tmax_date_p
+```
+
+## Data Manipulation with factors
+```{r}
+weather_df %>%
+  mutate(name = fct_reorder(name,tmax)) %>%
+  ggplot(aes(x = name, y = tmax)) + 
+  geom_violin(aes(fill = name), color = "blue", alpha = .5) + 
+  theme(legend.position = "bottom")
+
+weather_df %>%
+  select(name, tmax, tmin) %>% 
+  pivot_longer(
+    tmax:tmin,
+    names_to = "obs", 
+    values_to = "temp") %>% 
+  ggplot(aes(x = temp, fill = obs)) +
+  geom_density(alpha = .5) + 
+  facet_grid(.~ name)
+```
+
+## learning assessment
+```{r}
+
+```
